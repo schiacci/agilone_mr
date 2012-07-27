@@ -8,8 +8,7 @@ field_specific_logs = FOREACH logs GENERATE date, time, uri_stem, c_ip;
 
 cIp_logs            = GROUP field_specific_logs BY c_ip;
 
-ordered_stuff       = FOREACH cIp_logs GENERATE group, bag.login_logout_sequence(field_specific_logs);
+ip_loginDate_loginTime_logoutDate_logoutTime = FOREACH cIp_logs GENERATE FLATTEN(bag.login_logout_sequence(field_specific_logs));
 
-DESCRIBE ordered_stuff;
-DUMP ordered_stuff;
-
+DESCRIBE ip_loginDate_loginTime_logoutDate_logoutTime;
+DUMP     ip_loginDate_loginTime_logoutDate_logoutTime;
