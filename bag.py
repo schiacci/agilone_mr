@@ -1,37 +1,60 @@
 
-#@outputSchema("y:bag{t:tuple(ip:chararray,time_in_seconds:int)}")
-@outputSchema("y:bag{t:tuple(output:chararray)}")
 def login_logout_sequence(records):
-  date_time_uriStem_ip_list = []
+  date_time_uriStem_ip_seconds_list = []
+  # Read each bag item and append a time in estimated seconds
   for record in records:
     year,month,day      = record[0].split('-')
     hour,minute,seconds = record[1].split(':')
 
     seconds = (int(year)*31557600) + (int(month)*2592000) + (int(day)*86400) + (int(hour)*3600) + (int(minute)*60) + int(seconds)
-    #sorted_ip_seconds.append(seconds)
-    date_time_uriStem_ip = [record[3], record[2], record[0], record[1], seconds]
-    date_time_uriStem_ip_list.append(date_time_uriStem_ip)
-#  return date_time_uriStem_ip
+    date_time_uriStem_ip_seconds = [record[0], record[1], record[2], record[3], seconds]
+    date_time_uriStem_ip_seconds_list.append(date_time_uriStem_ip_seconds)
 
-#  previous_login      = False
-#  login_logout_output = ""
-  login_logout_list   = []
-  for date, time, uri_stem, ip, seconds in sorted(date_time_uriStem_ip_list, key=lambda date_time_uriStem_ip: date_time_uriStem_ip[4], reverse=False):
-    login_logout_list.append((date + " " + time + " " + uri_stem + " " + ip))
-#    if previous_login:
-#      if item[2] == '/Login':
-#        login_logout_output = item[3] + "\t" + item[0] + " " + item[1]
-#        previous_login      =  True
-#      else:
-#        login_logout_output = login_logout_output + "\t" + item[0] + " " + item[1]
-#        login_logout_list.append((login_logout_output))
-#    else:
-#      if item[2] == '/Login':
-#        login_logout_output = item[3] + "\t" + "-"
-#        previous_login      = True
-#      else:
-#        login_logout_output = item[3] + "\t" + "-"
-#        login_logout_list.append((login_logout_output))
-#        previous_login      = False
+  # loop through each item in order
+  previous_login       = False
+  ip_login_logout_list = []
+  current_ip           = None
+  login_date           = None
+  login_time           = None
+  logout_date          = None
+  logout_time          = None  
+  for date_time_uriStem_ip_seconds in sorted(date_time_uriStem_ip_seconds_list, key=lambda date_time_uriStem_ip: date_time_uriStem_ip[4], reverse=False):
+    if date_time_uriStem_ip_seconds[2] == '/Login':
+      # Previous was login, no logout called
+      if previous_login and login_date and login_time:
+        ip_login_logout_list.append((current_ip, login_date, login_time, '-'))
+        current_ip           = None
+        login_date           = None
+        login_time           = None
+        logout_date          = None
+        logout_time          = None
 
-  return login_logout_list
+      current_ip = date_time_uriStem_ip_seconds[3]
+      login_date = date_time_uriStem_ip_seconds[0]
+      login_time = date_time_uriStem_ip_seconds[1]
+
+      previous_login = True
+
+    elif date_time_uriStem_ip_seconds[2] == '/Logout':
+      current_ip  = date_time_uriStem_ip_seconds[3]
+      logout_date = date_time_uriStem_ip_seconds[0]
+      logout_time = date_time_uriStem_ip_seconds[1]
+      if previous_login:
+        ip_login_logout_list.append((current_ip, login_date, login_time, logout_date, logout_time))
+      else:
+        # no prior login
+        ip_login_logout_list.append((current_ip, '-', logout_date, logout_time))
+      current_ip           = None
+      login_date           = None
+      login_time           = None
+      logout_date          = None
+      logout_time          = None  
+        
+      previous_login = False
+
+  # login found without a last login or logout
+  if login_date and login_time:
+    ip_login_logout_list.append((current_ip, login_date, login_time, '-'))
+
+  return ip_login_logout_list
+
